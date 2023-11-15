@@ -1,52 +1,61 @@
-import * as React from 'react'
-import axios from 'axios'
+import * as React from "react";
+import axios from "axios";
 
 import {
   queryOptions,
-  useQuery,
+  useSuspenseQuery,
   useQueryClient,
   useMutation,
   QueryClient,
   QueryClientProvider,
-} from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+} from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-const client = new QueryClient()
+const client = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      gcTime: 60 * 60 * 1000,
+      staleTime: 90 * 60 * 1000,
+    },
+  },
+});
 
 type Todos = {
   items: readonly {
-    id: string
-    text: string
-  }[]
-  ts: number
-}
+    id: string;
+    text: string;
+  }[];
+  ts: number;
+};
 
 async function fetchTodos(): Promise<Todos> {
-  const res = await axios.get('/api/data')
-  return res.data
+  console.info("FETCH TODOS");
+  const res = await axios.get("/api/data");
+  return res.data;
 }
 
 const todoListOptions = queryOptions({
-  queryKey: ['todos'],
+  queryKey: ["todos", { number1: 1, number2: 2, string1: "test" }],
   queryFn: fetchTodos,
-})
+});
 
 function Example() {
-  const queryClient = useQueryClient()
-  const [text, setText] = React.useState('')
-  const { isFetching, ...queryInfo } = useQuery(todoListOptions)
+  const queryClient = useQueryClient();
+  const [text, setText] = React.useState("");
+  const { isFetching, ...queryInfo } = useSuspenseQuery(todoListOptions);
 
   const addTodoMutation = useMutation({
-    mutationFn: (newTodo) => axios.post('/api/data', { text: newTodo }),
+    mutationFn: (newTodo) => axios.post("/api/data", { text: newTodo }),
     // When mutate is called:
     onMutate: async (newTodo: string) => {
-      setText('')
+      setText("");
       // Cancel any outgoing refetches
       // (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries(todoListOptions)
+      await queryClient.cancelQueries(todoListOptions);
 
       // Snapshot the previous value
-      const previousTodos = queryClient.getQueryData(todoListOptions.queryKey)
+      const previousTodos = queryClient.getQueryData(todoListOptions.queryKey);
 
       // Optimistically update to the new value
       if (previousTodos) {
@@ -56,23 +65,23 @@ function Example() {
             ...previousTodos.items,
             { id: Math.random().toString(), text: newTodo },
           ],
-        })
+        });
       }
 
-      return { previousTodos }
+      return { previousTodos };
     },
     // If the mutation fails,
     // use the context returned from onMutate to roll back
     onError: (err, variables, context) => {
       if (context?.previousTodos) {
-        queryClient.setQueryData<Todos>(['todos'], context.previousTodos)
+        queryClient.setQueryData<Todos>(["todos"], context.previousTodos);
       }
     },
     // Always refetch after error or success:
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['todos'] })
+      //queryClient.invalidateQueries({ queryKey: ["todos"] });
     },
-  })
+  });
 
   return (
     <div>
@@ -86,8 +95,8 @@ function Example() {
       </p>
       <form
         onSubmit={(e) => {
-          e.preventDefault()
-          addTodoMutation.mutate(text)
+          e.preventDefault();
+          addTodoMutation.mutate(text);
         }}
       >
         <input
@@ -112,10 +121,10 @@ function Example() {
           {isFetching && <div>Updating in background...</div>}
         </>
       )}
-      {queryInfo.isLoading && 'Loading'}
+      {queryInfo.isLoading && "Loading"}
       {queryInfo.error instanceof Error && queryInfo.error.message}
     </div>
-  )
+  );
 }
 
 export default function App() {
@@ -124,5 +133,5 @@ export default function App() {
       <Example />
       <ReactQueryDevtools initialIsOpen />
     </QueryClientProvider>
-  )
+  );
 }
