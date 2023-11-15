@@ -30,7 +30,7 @@ type Todos = {
 };
 
 async function fetchTodos(): Promise<Todos> {
-  console.info("FETCH TODOS");
+  // console.info("FETCH TODOS");
   const res = await axios.get("/api/data");
   return res.data;
 }
