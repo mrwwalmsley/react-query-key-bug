@@ -1,5 +1,4 @@
 import * as React from "react";
-import axios from "axios";
 
 import {
   queryOptions,
@@ -30,9 +29,9 @@ type Todos = {
 };
 
 async function fetchTodos(): Promise<Todos> {
-  // console.info("FETCH TODOS");
-  const res = await axios.get("/api/data");
-  return res.data;
+  console.info("FETCH TODOS");
+  const res = await fetch("/api/data");
+  return res.json();
 }
 
 const todoListOptions = queryOptions({
@@ -46,7 +45,12 @@ function Example() {
   const { isFetching, ...queryInfo } = useSuspenseQuery(todoListOptions);
 
   const addTodoMutation = useMutation({
-    mutationFn: (newTodo) => axios.post("/api/data", { text: newTodo }),
+    mutationFn: (newTodo) =>
+      fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: newTodo }),
+      }),
     // When mutate is called:
     onMutate: async (newTodo: string) => {
       setText("");
